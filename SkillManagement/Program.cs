@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.SqlServer;
-using SkillManagement.Data; // Если AppDbContext в папке Data
+using SkillManagement.Data;
 
 
 var builder = WebApplication.CreateBuilder(args);
