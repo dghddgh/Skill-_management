@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
-using SkillManagement.Data;        // Для AppDbContext
-using SkillManagement.Models;     // Для моделей Person, Skill
+using SkillManagement.Models;    
 using Microsoft.Extensions.Configuration;
-using AutoMapper;                 // Для AutoMapper (добавьте, если используете)
-using SkillManagement.Mappings;    // Пространство имён для MappingProfile (укажите своё)
+using AutoMapper;                
+using SkillManagement.Mappings;   
+
 
 var builder = WebApplication.CreateBuilder(args);
 
