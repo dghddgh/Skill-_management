@@ -24,18 +24,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-// 4. РЕГИСТРАЦИЯ AUTOMAPPER (ключевое дополнение!)
+
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// 5. Дополнительные сервисы (если нужны)
-// builder.Services.AddScoped<ISomeService, SomeService>();
+
 
 var app = builder.Build();
 
-// 6. Настройка middleware
+// Настройка middleware
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();  // Для детальных ошибок в разработке
+    app.UseDeveloperExceptionPage();  
     app.UseSwagger();
     app.UseSwaggerUI();
 }
