@@ -1,83 +1,120 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SkillManagement.Models;
 using SkillManagement.Data;
+using SkillManagement.Models;
+using SkillManagement.Dtos;
+using AutoMapper;
+using System.Threading.Tasks;
 
-namespace SkillManagement.Controllers;
-
-[ApiController]
-[Route("api/v1/persons")]
-public class PersonsController : ControllerBase
+namespace SkillManagement.Controllers
 {
-    private readonly AppDbContext _context;
-
-    public PersonsController(AppDbContext context)
+    [ApiController]
+    [Route("api/v1/persons")]
+    public class PersonsController : ControllerBase
     {
-        _context = context;
-    }
+        private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
 
-    // GET: api/v1/persons
-    [HttpGet]
-    public async Task<IActionResult> GetAllPersons()
-    {
-        var persons = await _context.Persons.ToListAsync();
-        return Ok(persons);
-    }
+        public PersonsController(AppDbContext context, IMapper mapper)
+        {
+            _context = context;
+            _mapper = mapper;
+        }
 
-    // GET: api/v1/persons/{id}
-    [HttpGet("{id:long}")]
-    public async Task<IActionResult> GetPersonById(long id)
-    {
-        var person = await _context.Persons.FindAsync(id);
-        if (person == null)
-            return NotFound();
+        // GET: api/v1/persons
+        [HttpGet]
+        public async Task<IActionResult> GetAllPersons()
+        {
+            var persons = await _context.Persons
+                .Include(p => p.Skills)
+                .ToListAsync();
 
-        return Ok(person);
-    }
+            var dtos = _mapper.Map<List<PersonDto>>(persons);
+            return Ok(dtos);
+        }
 
-    // POST: api/v1/persons
-    [HttpPost]
-    public async Task<IActionResult> CreatePerson([FromBody] Person person)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        // GET: api/v1/persons/{id}
+        [HttpGet("{id:long}")]
+        public async Task<IActionResult> GetPersonById(long id)
+        {
+            var person = await _context.Persons
+                .Include(p => p.Skills)
+                .FirstOrDefaultAsync(p => p.Id == id);
 
-        _context.Persons.Add(person);
-        await _context.SaveChangesAsync();
+            if (person == null)
+                return NotFound(new { Message = $"Person with ID {id} not found." });
 
-        return CreatedAtAction(nameof(GetPersonById), new { id = person.Id }, person);
-    }
+            var dto = _mapper.Map<PersonDto>(person);
+            return Ok(dto);
+        }
 
-    // PUT: api/v1/persons/{id}
-    [HttpPut("{id:long}")]
-    public async Task<IActionResult> UpdatePerson(long id, [FromBody] Person updatedPerson)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        // POST: api/v1/persons
+        [HttpPost]
+        public async Task<IActionResult> CreatePerson([FromBody] CreatePersonDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-        var existingPerson = await _context.Persons.FindAsync(id);
-        if (existingPerson == null)
-            return NotFound();
+            var person = _mapper.Map<Person>(dto);
 
-        existingPerson.Name = updatedPerson.Name;
-        existingPerson.DisplayName = updatedPerson.DisplayName;
-        existingPerson.Skills = updatedPerson.Skills;
+            _context.Persons.Add(person);
+            await _context.SaveChangesAsync();
 
-        await _context.SaveChangesAsync();
-        return Ok(existingPerson);
-    }
+            var resultDto = _mapper.Map<PersonDto>(person);
 
-    // DELETE: api/v1/persons/{id}
-    [HttpDelete("{id:long}")]
-    public async Task<IActionResult> DeletePerson(long id)
-    {
-        var person = await _context.Persons.FindAsync(id);
-        if (person == null)
-            return NotFound();
+            return CreatedAtAction(
+                nameof(GetPersonById),
+                new { id = person.Id },
+                resultDto);
+        }
 
-        _context.Persons.Remove(person);
-        await _context.SaveChangesAsync();
+        // PUT: api/v1/persons/{id}
+        [HttpPut("{id:long}")]
+        public async Task<IActionResult> UpdatePerson(long id, [FromBody] UpdatePersonDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-        return NoContent();
+            var existingPerson = await _context.Persons
+                .Include(p => p.Skills)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (existingPerson == null)
+                return NotFound(new { Message = $"Person with ID {id} not found." });
+
+            // Обновляем только изменённые поля
+            _mapper.Map(dto, existingPerson);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!PersonExists(id))
+                    return NotFound();
+                else
+                    throw;
+            }
+
+            return NoContent();
+        }
+
+        // DELETE: api/v1/persons/{id}
+        [HttpDelete("{id:long}")]
+        public async Task<IActionResult> DeletePerson(long id)
+        {
+            var person = await _context.Persons.FindAsync(id);
+            if (person == null)
+                return NotFound(new { Message = $"Person with ID {id} not found." });
+
+            _context.Persons.Remove(person);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private bool PersonExists(long id) =>
+            _context.Persons.Any(e => e.Id == id);
     }
 }
